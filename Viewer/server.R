@@ -1,4 +1,3 @@
-library(os)
 library(shiny)
 library(shinyWidgets)
 library(magick)
@@ -16,7 +15,7 @@ print(the_date)
 
 ##### PULL IN DATA FROM POSTGRES #####
 
-creds <- read_yaml(os.environ['CREDS_PATH'])
+creds <- read_yaml(Sys.getenv('CREDS_PATH'))
 
 sql_driver <- dbDriver("PostgreSQL")
 
