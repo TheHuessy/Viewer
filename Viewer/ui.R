@@ -22,7 +22,7 @@ shinyUI(
                                                            Shiny.onInputChange("dimension", dimension);});')
                                         ),
 
-                                        includeCSS("style.css"),
+                                        includeCSS("www/style.css"),
                                         div(style="display: inline-block;vertical-align:top; width: 125px;",
                                             ## In order for these to be side by side, you need this div with this sort of style setting
                                             switchInput(inputId = "auto_toggle_btn",
