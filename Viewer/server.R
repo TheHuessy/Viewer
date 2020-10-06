@@ -155,7 +155,7 @@ shinyServer(function(input, output, session) {
 
               ##############################  TIMER  ###############################
 
-              autoad <- reactiveTimer(intervalMs =  7000)
+              autoad <- reactiveTimer(intervalMs =  Sys.getenv('VIEWER_INTERVAL')
 
               ######################################################################
 
