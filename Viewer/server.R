@@ -38,8 +38,6 @@ dbDisconnect(sql_con)
 
 tot <- nrow(viewables)
 
-#cnt <- sample(x = 1:tot, size = 1, replace = TRUE)
-
 auto_switch <<- FALSE
 
 removes <- data.frame(end_link=c(),table_name=c())
@@ -155,7 +153,7 @@ shinyServer(function(input, output, session) {
 
               ##############################  TIMER  ###############################
 
-              autoad <- reactiveTimer(intervalMs =  Sys.getenv('VIEWER_INTERVAL')
+              autoad <- reactiveTimer(intervalMs =  Sys.getenv('VIEWER_INTERVAL'))
 
               ######################################################################
 
