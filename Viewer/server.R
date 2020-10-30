@@ -103,12 +103,34 @@ get_link <- function(cnt){
   return(output_link)
 }
 
-
-
 cnt <<- get_cnt_safe(viewables,removes)
 
 
 shinyServer(function(input, output, session) {
+
+#############
+# FUNCTIONS #
+#############
+              load_image <- function(){
+                output$image_output <<- renderImage({
+                  list(src = "tmp.jpg",
+                       contentType = "image/jpeg")},
+                  deleteFile = TRUE)
+                print(img_link)
+              }
+
+              buffer_new_image <- function(cnt){
+                img_link <<- get_link(cnt)
+                image_read(img_link) %>%
+                image_write("tmp.jpg")
+              }
+
+              next_image <- function(){
+                cnt <<- get_cnt_safe(viewables,removes)
+                buffer_new_image(cnt)
+                load_image()
+              }
+
 
               onStop(function(){
                        if (nrow(removes) != 0){
@@ -117,20 +139,24 @@ shinyServer(function(input, output, session) {
                        dbDisconnect(sql_con)
                        print("Session disconnected")
 })
-              img_link <<- get_link(cnt)
+              onclick("image_div_object",{
+                        next_image()
+})
 
-              img <- image_read(img_link) %>%
-                image_write("tmp.jpg")
+              buffer_new_image(cnt)
+
+              output$image_div_object <- renderUI({
+                    imageOutput("image_output",
+                                height = "100%"#,
+                    )
+              })
+
 
               ########################
               # Initial Image Output #  
               ########################
 
-              output$image_output <- renderImage({
-                list(src = "tmp.jpg",
-                     contentType = "image/jpeg")
-              },deleteFile = TRUE
-              )
+              load_image()
 
               ##### KILL BUTTON #####
               observeEvent(input$kill_switch, {
@@ -141,7 +167,6 @@ shinyServer(function(input, output, session) {
 
 
               ##### TIMER ADVANCEMENT #####
-
               observeEvent(input$auto_toggle_btn,{
                              if (input$auto_toggle_btn == TRUE){
                                auto_switch <<- TRUE
@@ -149,8 +174,6 @@ shinyServer(function(input, output, session) {
                                auto_switch <<- FALSE
                              }
               })
-
-
               ##############################  TIMER  ###############################
 
               autoad <- reactiveTimer(intervalMs =  as.numeric(Sys.getenv('VIEWER_INTERVAL')))
@@ -160,37 +183,9 @@ shinyServer(function(input, output, session) {
               observe({
                 autoad()
                 if (isolate(auto_switch) == TRUE){
-                  #                  cnt <<- sample(x = 1:tot, size = 1, replace = TRUE)
-                  cnt <<- get_cnt_safe(viewables,removes)
-
-                  img_link <<- get_link(cnt)
-                  img <<- image_read(img_link) %>%
-                    image_write("tmp.jpg")
-
-                  output$image_output <<- renderImage({
-                    list(src = "tmp.jpg",
-                         contentType = "image/jpeg")
-                  }, deleteFile = TRUE
-                  )
+                  next_image()
                 }
               })
 
-              ##### TAP ADVANCEMENT #####
-
-              ## IF YOU'RE HAVING ISSUES WITH IT NOT ADVANCING, TRY CLICKING ON THE UPPER LEFT CORNER OF THE IMAGE
-              ## It looks like it only counts clicks on the actual space the image takes up and not the space that the css file fills to meet the width requirement
-
-              observeEvent(input$im_click, {
-                             #                             cnt <<- sample(x = 1:tot, size = 1, replace = TRUE)
-                             cnt <<- get_cnt_safe(viewables,removes)
-                             img_link <<- get_link(cnt)
-                             img <<- image_read(img_link) %>%
-                               image_write("tmp.jpg")
-
-                             output$image_output <<- renderImage({
-                               list(src = "tmp.jpg",
-                                    contentType = "image/jpeg")
-                             }, deleteFile = TRUE)
-              })
     })
 
