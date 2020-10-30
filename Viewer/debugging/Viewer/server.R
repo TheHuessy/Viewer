@@ -110,27 +110,137 @@ cnt <<- get_cnt_safe(viewables,removes)
 
 shinyServer(function(input, output, session) {
 
+###################
+# UI IMAGE OUTPUT #
+###################
+
+#              output$image_div_object <<- renderUI({
+#                div(class = "image_container",
+#                    imageOutput("image_output",
+#                                click = "im_click")
+#                    )
+#              })
+
+
+
+
+#############
+# FUNCTIONS #
+#############
+              load_image <- function(){
+                output$image_output <<- renderImage({
+                  list(src = "tmp.jpg",
+                       contentType = "imaage/jpeg")},
+                  deleteFile = TRUE)
+              }
+
+              buffer_new_image <- function(cnt){
+                img_link <<- get_link(cnt)
+                #tall: "https://i.imgur.com/j526xVz.jpg"
+#                img_link <<- "https://i.imgur.com/K3Xp8NG.jpg"
+                #wide: "https://i.imgur.com/K3Xp8NG.jpg"
+#                img_link <<- "https://i.imgur.com/j526xVz.jpg"
+                print(img_link)
+                img <- image_read(img_link)
+                info <- image_info(img)
+                image_write(img,"tmp.jpg")
+                return(info)
+              }
+              observeEvent(input$dimension,{
+                             screen_width <<- isolate(input$dimension[1])
+                             screen_height <<- isolate(input$dimension[2])
+})
+
+
+
               onStop(function(){
-                       if (nrow(removes) != 0){
-                         remove_duds(removes)
-                       }
+#                       if (nrow(removes) != 0){
+#                         remove_duds(removes)
+#                       }
                        dbDisconnect(sql_con)
                        print("Session disconnected")
 })
-              img_link <<- get_link(cnt)
+              img_dat <<- buffer_new_image(cnt)
 
-              img <- image_read(img_link) %>%
-                image_write("tmp.jpg")
+              output$image_div_object <- renderUI({
+#                div_height = screen_height-46.2
+#                div_height <- input$dimension[2]-46.2
+#                print(div_height)
+
+#                div(class = "image_container",
+#                    style=paste("height:",input$dimension[2]),
+                    imageOutput("image_output",
+#                                height = input$dimension[2]-46.2,
+                                height = "100%",
+                                click = "im_click")
+#                    )
+              })
+
+
+
+
+              ########################
+              # DEBUG TESTING OUTPUT #
+              ########################
+
+#              fit_height <- function(image_height){
+#                dim_height <- reactive({input$dimension[2]})
+#                height_conv_fctr <- reactive({dim_height()/image_height})
+#                new_height <- image_height*isolate(height_conv_fctr())
+#                return(new_height)
+#              }
+
+#              fit_width <- function(image_width){
+#                dim_width <- reactive({input$dimension[1]})
+#                width_conv_fctr <- reactive({dim_width()/image_width})
+#                new_width <- image_width*as.numeric(isolate(width_conv_fctr()))
+#                return(new_width)
+#              }
+
+
+
+
+
+#              dim_width <- reactive({input$dimension[0]})
+#              dim_height <- reactive({input$dimension[1]})
+
+#              test_image_height <- 720
+#              test_image_width <- 1280
+
+#              height_conv_fctr <- reactive({dim_height()/test_image_height})
+#              width_conv_fctr <- reactive({dim_width()/test_image_width})
+              #
+              ## Going to have to build a funciton that takes the link, makes these vars, writes the image, then releases the link like the img def does above
+              test_im_width <- image_info(image_read(img_link))$width
+              test_im_height <- image_info(image_read(img_link))$height
+              print(image_info(image_read(img_link)))
+              print(test_im_width)
+              print(test_im_height)
+#              print("=======")
+              print("=======")
+#              observeEvent(input$dimension,{
+#                             screen_width <<- isolate(input$dimension[1])
+#                             screen_height <<- isolate(input$dimension[2])
+#                             gen_width <- test_im_width * reactive({input$dimension[1]/image_width})
+#                             print(paste("width:", screen_width))
+#                             print(paste("height:", screen_height))
+#})
+#              observeEvent(input$dimension,{new_height <<- isolate(fit_height(test_im_height))})
+#              print(new_width)
+#              print(new_height)
+#              print(reactive({(fit_height(test_im_height))}))
+
+
+#              output$testing_output <- renderPrint({paste("Width:", fit_width(test_im_width), "\n", "Height:", fit_height(test_im_height))})
+
+
+
 
               ########################
               # Initial Image Output #  
               ########################
 
-              output$image_output <- renderImage({
-                list(src = "tmp.jpg",
-                     contentType = "image/jpeg")
-              },deleteFile = TRUE
-              )
+              load_image()
 
               ##### KILL BUTTON #####
               observeEvent(input$kill_switch, {
@@ -141,7 +251,6 @@ shinyServer(function(input, output, session) {
 
 
               ##### TIMER ADVANCEMENT #####
-
               observeEvent(input$auto_toggle_btn,{
                              if (input$auto_toggle_btn == TRUE){
                                auto_switch <<- TRUE
@@ -149,8 +258,6 @@ shinyServer(function(input, output, session) {
                                auto_switch <<- FALSE
                              }
               })
-
-
               ##############################  TIMER  ###############################
 
               autoad <- reactiveTimer(intervalMs =  as.numeric(Sys.getenv('VIEWER_INTERVAL')))
@@ -160,18 +267,10 @@ shinyServer(function(input, output, session) {
               observe({
                 autoad()
                 if (isolate(auto_switch) == TRUE){
-                  #                  cnt <<- sample(x = 1:tot, size = 1, replace = TRUE)
                   cnt <<- get_cnt_safe(viewables,removes)
 
-                  img_link <<- get_link(cnt)
-                  img <<- image_read(img_link) %>%
-                    image_write("tmp.jpg")
-
-                  output$image_output <<- renderImage({
-                    list(src = "tmp.jpg",
-                         contentType = "image/jpeg")
-                  }, deleteFile = TRUE
-                  )
+                  img_dat <<- buffer_new_image(cnt)
+                  load_image()
                 }
               })
 
@@ -181,16 +280,10 @@ shinyServer(function(input, output, session) {
               ## It looks like it only counts clicks on the actual space the image takes up and not the space that the css file fills to meet the width requirement
 
               observeEvent(input$im_click, {
-                             #                             cnt <<- sample(x = 1:tot, size = 1, replace = TRUE)
                              cnt <<- get_cnt_safe(viewables,removes)
-                             img_link <<- get_link(cnt)
-                             img <<- image_read(img_link) %>%
-                               image_write("tmp.jpg")
+                             img_dat <<- buffer_new_image(cnt)
+                             load_image()
 
-                             output$image_output <<- renderImage({
-                               list(src = "tmp.jpg",
-                                    contentType = "image/jpeg")
-                             }, deleteFile = TRUE)
               })
     })
 
