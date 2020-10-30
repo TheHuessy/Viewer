@@ -103,6 +103,13 @@ get_link <- function(cnt){
   return(output_link)
 }
 
+#next_image <- function(){
+#  cnt <<- get_cnt_safe(viewables,removes)
+#  img_dat <<- buffer_new_image(cnt)
+#  load_image()
+#}
+
+
 
 
 cnt <<- get_cnt_safe(viewables,removes)
@@ -116,22 +123,34 @@ shinyServer(function(input, output, session) {
               load_image <- function(){
                 output$image_output <<- renderImage({
                   list(src = "tmp.jpg",
-                       contentType = "imaage/jpeg")},
+                       contentType = "image/jpeg")},
                   deleteFile = TRUE)
+#                print("")
+                print(img_link)
               }
 
               buffer_new_image <- function(cnt){
                 img_link <<- get_link(cnt)
-                print(img_link)
-                img <- image_read(img_link)
-                info <- image_info(img)
-                image_write(img,"tmp.jpg")
-                return(info)
+#                print(img_link)
+                image_read(img_link) %>%
+#                info <- image_info(img)
+                image_write("tmp.jpg")
+#                return(info)
+#              print("end of buffer new timage")
               }
-              observeEvent(input$dimension,{
-                             screen_width <<- isolate(input$dimension[1])
-                             screen_height <<- isolate(input$dimension[2])
-})
+
+              next_image <- function(){
+                cnt <<- get_cnt_safe(viewables,removes)
+                buffer_new_image(cnt)
+                load_image()
+#                print("")
+              }
+
+
+#              observeEvent(input$dimension,{
+#                             screen_width <<- isolate(input$dimension[1])
+#                             screen_height <<- isolate(input$dimension[2])
+#})
 
 
 
@@ -142,12 +161,19 @@ shinyServer(function(input, output, session) {
                        dbDisconnect(sql_con)
                        print("Session disconnected")
 })
-              img_dat <<- buffer_new_image(cnt)
+              onclick("image_div_object",{
+#                        print("the image got clicked!")
+                        next_image()
+#                        print("the image got clicked!")
+#                        print("Here's another line of code!")
+})
+              buffer_new_image(cnt)
 
               output$image_div_object <- renderUI({
                     imageOutput("image_output",
-                                height = "100%",
-                                click = "im_click")
+                                height = "100%"#,
+#                                click = "im_click"
+                    )
               })
 
 
@@ -182,10 +208,11 @@ shinyServer(function(input, output, session) {
               observe({
                 autoad()
                 if (isolate(auto_switch) == TRUE){
-                  cnt <<- get_cnt_safe(viewables,removes)
+#                  cnt <<- get_cnt_safe(viewables,removes)
 
-                  img_dat <<- buffer_new_image(cnt)
-                  load_image()
+#                  img_dat <<- buffer_new_image(cnt)
+#                  load_image()
+                  next_image()
                 }
               })
 
@@ -194,11 +221,12 @@ shinyServer(function(input, output, session) {
               ## IF YOU'RE HAVING ISSUES WITH IT NOT ADVANCING, TRY CLICKING ON THE UPPER LEFT CORNER OF THE IMAGE
               ## It looks like it only counts clicks on the actual space the image takes up and not the space that the css file fills to meet the width requirement
 
-              observeEvent(input$im_click, {
-                             cnt <<- get_cnt_safe(viewables,removes)
-                             img_dat <<- buffer_new_image(cnt)
-                             load_image()
+#              observeEvent(input$im_click, {
+#                             next_image()
+#                             cnt <<- get_cnt_safe(viewables,removes)
+#                             img_dat <<- buffer_new_image(cnt)
+#                             load_image()
 
-              })
+#              })
     })
 
