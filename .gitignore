@@ -1,3 +1,5 @@
 .Rproj.user
 Viewer/.RData
 Viewer/.Rhistory
+*.swp
+Viewer/debug*
