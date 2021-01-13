@@ -53,9 +53,16 @@ remove_duds <- function(removes_df){
   for (i in 1:nrow(removes_df)){
     rm_link <- removes_df[i,1]
     rm_table <- removes_df[i,2]
+    if (grepl("/p/", rm_link, fixed = TRUE)) {
+      link_var <- "piece"
+    } else {
+      link_var <- "end_link"
+    }
+
     delete_row_statement <- paste("DELETE FROM ",
                                   rm_table,
-                                  " WHERE end_link = '",
+                                  " WHERE ",
+                                  link_var," = '",
                                   rm_link,
                                   "'",
                                   sep=""
@@ -85,10 +92,74 @@ get_cnt_safe <- function(viewables,removes){
   return(internal_cnt)
 }
 
+
+
+parse_csrf <- function(cookie_table){
+  output <- cookie_table[which(cookie_table$name == "csrftoken"),7]
+  return(output)
+}
+
+set_insta_session <- function(full_url){
+  time_rn <- round(as.numeric(as.POSIXct(Sys.time())),0)
+
+  response_data <- GET(full_url)
+  csrf <- parse_csrf(response_data$cookies)
+  login_link <- "https://www.instagram.com/accounts/login/"
+
+  post_body <- list(
+                    username = creds$un_insta,
+                    enc_password = paste('#PWD_INSTAGRAM_BROWSER:0:{', time_rn, '}:', creds$pw_insta, sep = ""),
+                    optIntoOneTap = 'false'
+  )
+
+  post_headers <- c(
+                    'user-agent' = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36",
+                    'x-requested-with' = "XMLHttpRequest",
+                    referer = login_link,
+                    'x-csrftoken' = csrf
+  )
+
+  auth_post <- POST(url = paste(login_link, "ajax/", sep = ""), body = post_body, add_headers(post_headers))
+
+  if ("sessionid" %in% auth_post$cookies$name) {
+    print("Reauthenticated!")
+    page_retry <- content(GET(full_url, add_headers('x-csrftoken' =  parse_csrf(auth_post$cookies))))
+    if (is.null(page_retry$graphql$shortcode_media$display_url) == FALSE){
+      return(page_retry)
+    } else {
+      print("Reuathentication did not work")
+      return(page_retry)
+    }
+  } else {
+    print("Not able to authenticate instagram!")
+    return(auth_post)
+  }
+
+}
+
+reauthenticate <- function(full_url){
+  page_data <- set_insta_session(full_url)
+  if (is.null(page_data$graphql$shortcode_media$display_url) == TRUE){
+    return("https://www.imgur.com/thispageisactuallydead")
+  } else{
+    return(page_data$graphql$shortcode_media$display_url)
+  }
+}
+
 insta_fresh <- function(piece){
-  pre_url <- paste("https://www.instagram.com",piece, "media/?size=l", sep="")
-  fresh_url = GET(pre_url)
-  return(fresh_url$url)
+
+  full_url <- paste("https://www.instagram.com", piece, "?__a=1", sep = "")
+
+  ## If response is bad [define in a little bit], run set_insta_sesson and then retry••
+
+  page_data <- content(GET(full_url))
+
+  if (is.null(page_data$graphql$shortcode_media$display_url) == TRUE){
+    print("reauthenticate!")
+    return(reauthenticate(full_url))
+  } else {
+    return(page_data$graphql$shortcode_media$display_url)
+  }
 }
 
 
