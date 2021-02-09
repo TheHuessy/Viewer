@@ -4,6 +4,7 @@ library(magick)
 library(RPostgreSQL)
 library(yaml)
 library(httr)
+library(shinycssloaders)
 
 
 ###### LOG THE DATE #####
@@ -207,13 +208,14 @@ shinyServer(function(input, output, session) {
               buffer_new_image <- function(cnt){
                 img_link <<- get_link(cnt)
                 image_read(img_link) %>%
-                image_write("tmp.jpg")
+                  image_write("tmp.jpg")
               }
 
               next_image <- function(){
                 cnt <<- get_cnt_safe(viewables,removes)
                 buffer_new_image(cnt)
-                load_image()
+                load_image() %>%
+                  withSpinner()
               }
 
 
