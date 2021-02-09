@@ -188,6 +188,14 @@ shinyServer(function(input, output, session) {
 #############
 # FUNCTIONS #
 #############
+              initial_view <- function(){
+                output$image_div_object <- renderUI({
+                  actionButton(inputId = 'START',
+                               label = 'START')
+                })
+              }
+
+
               load_image <- function(){
                 output$image_output <<- renderImage({
                   list(src = "tmp.jpg",
@@ -213,7 +221,15 @@ shinyServer(function(input, output, session) {
                        if (nrow(removes) != 0){
                          remove_duds(removes)
                        }
-                       dbDisconnect(sql_con)
+
+                       if (exists("sql_con")){
+                         dbDisconnect(sql_con)
+                       }
+
+                       if (file.exists("tmp.jpg")){
+                         file.remove("tmp.jpg")
+                       }
+
                        print("Session disconnected")
                        print("=====================")
 })
@@ -231,10 +247,22 @@ shinyServer(function(input, output, session) {
 
 
               ########################
-              # Initial Image Output #  
+              # Initial HIDDEN Output #  
               ########################
+             initial_view()
 
-              load_image()
+
+             observeEvent(input$START, {
+                            output$image_div_object <- renderUI({
+                              imageOutput("image_output",
+                                          height = "100%"#,
+                              )
+                            })
+
+                            load_image()
+              })
+
+              #load_image()
 
               ##### OPTIONS MODAL #####
               observeEvent(input$options_button, {
@@ -245,7 +273,8 @@ shinyServer(function(input, output, session) {
                                                    footer = tagList(switchInput(inputId = "auto_toggle_btn",
                                                                                 onLabel = "Auto",
                                                                                 value = auto_switch),
-                                                                    actionButton("reset", "Reload Data")
+                                                                    actionButton("reset", "Reload Data"),
+                                                                    actionButton("hide", "Hide")
                                                                     ),
                                                    easyClose = TRUE
                                        )
@@ -256,6 +285,12 @@ shinyServer(function(input, output, session) {
               observeEvent(input$reset, {
                              pull_data()
                              next_image()
+              })
+
+              ##### HIDE DISPLAY #####
+
+              observeEvent(input$hide, {
+                             initial_view()
               })
 
 

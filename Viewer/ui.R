@@ -25,14 +25,11 @@ shinyUI(
                             useShinyjs(),
 
                             includeCSS("www/style.css"),
-                            div(style="display: inline-block;vertical-align:top; width: 125px;",
+                            div(style="display: inline-block;vertical-align:top; width: 100px;",
                                 ## In order for these to be side by side, you need this div with this sort of style setting
                                     actionButton("options_button", "O"),
-#                                switchInput(inputId = "auto_toggle_btn",
-#                                            onLabel = "Auto",
-#                                            value = FALSE)
                                 ),
-                            div(style="display: inline-block;vertical-align:top; width: 125px;",
+                            div(style="display: inline-block;vertical-align:top; width: 100px;",
                                 actionButton("kill_switch", "X")
                                 ),
                             uiOutput("image_div_object")
