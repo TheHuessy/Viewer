@@ -16,6 +16,12 @@ div {
 	padding: 0px;
 	box-shadow: none !important;
 }
+
+div.modal-content {
+  background-color: #424242;
+  color: #f2f2f2;
+}
+
 #image_output {
   max-width: 100%;
   max-height: 100%;
