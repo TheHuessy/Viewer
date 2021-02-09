@@ -15,28 +15,34 @@ print(the_date)
 
 ##### PULL IN DATA FROM POSTGRES #####
 
-creds <- read_yaml(Sys.getenv('CREDS_PATH'))
+creds <<- read_yaml(Sys.getenv('CREDS_PATH'))
 
-sql_driver <- dbDriver("PostgreSQL")
+pull_data <- function(){
 
-sql_con <- dbConnect(sql_driver,
-                     host=creds$pg_host,
-                     user=creds$pg_user,
-                     password=creds$pg_pw,
-                     dbname="strobot"
-)
+  sql_driver <- dbDriver("PostgreSQL")
 
-query = "SELECT end_link, 'culling_direct' as table_name FROM culling_direct WHERE keep = 1
-UNION
-SELECT piece as end_link, 'culling_external' as table_name FROM culling_external WHERE keep = 1
-UNION
-SELECT end_link, 'pulls' as table_name FROM pulls WHERE link_type = 'Direct'"
+  sql_con <- dbConnect(sql_driver,
+                       host=creds$pg_host,
+                       user=creds$pg_user,
+                       password=creds$pg_pw,
+                       dbname="strobot"
+  )
 
-viewables <- dbGetQuery(sql_con,
-                        statement=query)
-dbDisconnect(sql_con)
+  query = "SELECT end_link, 'culling_direct' as table_name FROM culling_direct WHERE keep = 1
+  UNION
+  SELECT piece as end_link, 'culling_external' as table_name FROM culling_external WHERE keep = 1
+  UNION
+  SELECT end_link, 'pulls' as table_name FROM pulls WHERE link_type = 'Direct'"
 
-tot <- nrow(viewables)
+  viewables <<- dbGetQuery(sql_con,
+                          statement=query)
+  dbDisconnect(sql_con)
+
+  tot <<- nrow(viewables)
+}
+
+#print("pre-pulldata")
+pull_data()
 
 auto_switch <<- FALSE
 
@@ -209,6 +215,7 @@ shinyServer(function(input, output, session) {
                        }
                        dbDisconnect(sql_con)
                        print("Session disconnected")
+                       print("=====================")
 })
               onclick("image_div_object",{
                         next_image()
@@ -228,6 +235,32 @@ shinyServer(function(input, output, session) {
               ########################
 
               load_image()
+
+              ##### OPTIONS MODAL #####
+              observeEvent(input$options_button, {
+                             showModal(
+                                       modalDialog(
+                                                   title = "Options",
+                                                   "Options",
+                                                   footer = tagList(switchInput(inputId = "auto_toggle_btn",
+                                                                                onLabel = "Auto",
+                                                                                value = auto_switch),
+                                                                    actionButton("reset", "Reload Data")
+                                                                    ),
+                                                   easyClose = TRUE
+                                       )
+                             )
+              })
+
+              ##### RELOAD IMAGES FROM DB #####
+              observeEvent(input$reset, {
+                             pull_data()
+                             next_image()
+              })
+
+
+
+
 
               ##### KILL BUTTON #####
               observeEvent(input$kill_switch, {
