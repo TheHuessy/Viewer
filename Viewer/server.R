@@ -138,6 +138,7 @@ set_insta_session <- function(full_url){
     }
   } else {
     print("Not able to authenticate instagram!")
+    print(auth_post)
     return(auth_post)
   }
 
