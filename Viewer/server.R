@@ -87,7 +87,11 @@ get_cnt_safe <- function(viewables,removes){
   internal_cnt <<- sample(x = 1:tot, size = 1, replace = TRUE)
   while (TRUE){
     test_url <<- GET(get_link(internal_cnt))
-    if (test_url$status_code != 200){
+    ###############
+    print(test_url$url)
+    print(test_url$status_code)
+    ###############
+    if (test_url$status_code != 200 || grepl("removed.png", test_url$url) == TRUE){
       removes <<- rbind(data.frame(end_link=viewables[internal_cnt,1],table_name=viewables[internal_cnt,2]),removes)
       viewables <<- viewables[-c(internal_cnt),,drop=FALSE]
       internal_cnt <<- sample(x = 1:tot, size = 1, replace = TRUE)
@@ -182,7 +186,7 @@ get_link <- function(cnt){
 }
 
 cnt <<- get_cnt_safe(viewables,removes)
-
+HIDE_FLAG <<- TRUE
 
 shinyServer(function(input, output, session) {
 
@@ -194,7 +198,20 @@ shinyServer(function(input, output, session) {
                   actionButton(inputId = 'START',
                                label = 'START')
                 })
+                HIDE_FLAG <<- TRUE
               }
+
+              unhide <- function(){
+                            output$image_div_object <- renderUI({
+                              imageOutput("image_output",
+                                          height = "100%"#,
+                              )
+                            })
+                            load_image()
+                            HIDE_FLAG <<- FALSE
+              }
+
+
 
 
               load_image <- function(){
@@ -202,7 +219,7 @@ shinyServer(function(input, output, session) {
                   list(src = "tmp.jpg",
                        contentType = "image/jpeg")},
                   deleteFile = TRUE)
-                print(img_link)
+                #print(img_link)
               }
 
               buffer_new_image <- function(cnt){
@@ -254,16 +271,9 @@ shinyServer(function(input, output, session) {
 
 
              observeEvent(input$START, {
-                            output$image_div_object <- renderUI({
-                              imageOutput("image_output",
-                                          height = "100%"#,
-                              )
-                            })
-
-                            load_image()
+                            unhide()
               })
 
-              #load_image()
 
               ##### OPTIONS MODAL #####
               observeEvent(input$options_button, {
@@ -271,12 +281,16 @@ shinyServer(function(input, output, session) {
                                        modalDialog(
                                                    title = "Options",
                                                    "Options",
-                                                   footer = tagList(switchInput(inputId = "auto_toggle_btn",
+                                                   footer = tagList(if (HIDE_FLAG == FALSE){
+                                                                    switchInput(inputId = "auto_toggle_btn",
                                                                                 onLabel = "Auto",
                                                                                 value = auto_switch),
                                                                     actionButton("reset", "Reload Data"),
                                                                     actionButton("hide", "Hide")
-                                                                    ),
+                                                                    } else {
+                                                                      actionButton("reset", "Reload Data"),
+                                                                      actionButton("unhide", "Show")
+                                                                    }),
                                                    easyClose = TRUE
                                        )
                              )
@@ -293,6 +307,14 @@ shinyServer(function(input, output, session) {
               observeEvent(input$hide, {
                              initial_view()
               })
+
+              ##### SHOW DISPLAY #####
+
+              observeEvent(input$unhide, {
+                             unhide()
+              })
+
+
 
 
 
