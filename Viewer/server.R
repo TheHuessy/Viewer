@@ -5,9 +5,8 @@ library(RPostgreSQL)
 library(yaml)
 library(httr)
 
-
 ###### LOG THE DATE #####
-the_date <- format(Sys.time(), "%Y-%m-%d %H:%m")
+the_date <- format(Sys.time(), "%Y-%m-%d %H:%M")
 print(the_date)
 #########################
 
@@ -49,6 +48,8 @@ auto_switch <<- FALSE
 removes <- data.frame(end_link=c(),table_name=c())
 
 remove_duds <- function(removes_df){
+  sql_driver <- dbDriver("PostgreSQL")
+
   sql_con <- dbConnect(sql_driver,
                        host=creds$pg_host,
                        user=creds$pg_user,
@@ -139,6 +140,7 @@ set_insta_session <- function(full_url){
   } else {
     print("Not able to authenticate instagram!")
     print(auth_post)
+    print(auth_post$cookies$name)
     return(auth_post)
   }
 
@@ -204,7 +206,10 @@ shinyServer(function(input, output, session) {
                   list(src = "tmp.jpg",
                        contentType = "image/jpeg")},
                   deleteFile = TRUE)
-                #print(img_link)
+                ## For whatever reason, if you don't have a print() command or something at the end
+                ## R shiny won't know what to do and throw a session$fileUrl error
+                ## That's why unhide wasn't working, it was getting to this function and failing
+                print(img_link)
               }
 
               unhide <- function(){
@@ -246,10 +251,11 @@ shinyServer(function(input, output, session) {
 
                        print("Session disconnected")
                        print("=====================")
-})
+              })
+
               onclick("image_div_object",{
                         next_image()
-})
+              })
 
               buffer_new_image(cnt)
 
