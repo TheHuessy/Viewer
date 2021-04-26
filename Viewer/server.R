@@ -27,9 +27,12 @@ pull_data <- function(){
                        dbname="strobot"
   )
 
-  query = "SELECT end_link, 'culling_direct' as table_name FROM culling_direct WHERE keep = 1
-  UNION
-  SELECT piece as end_link, 'culling_external' as table_name FROM culling_external WHERE keep = 1
+#  query = "SELECT end_link, 'culling_direct' as table_name FROM culling_direct WHERE keep = 1
+#  UNION
+#  SELECT piece as end_link, 'culling_external' as table_name FROM culling_external WHERE keep = 1
+#  UNION
+#  SELECT end_link, 'pulls' as table_name FROM pulls WHERE link_type = 'Direct'"
+  query = "SELECT DISTINCT end_link, 'culling_direct' as table_name FROM culling_direct WHERE keep = 1
   UNION
   SELECT end_link, 'pulls' as table_name FROM pulls WHERE link_type = 'Direct'"
 
@@ -62,11 +65,20 @@ remove_duds <- function(removes_df){
     rm_table <- removes_df[i,2]
     if (grepl("/p/", rm_link, fixed = TRUE)) {
       link_var <- "piece"
+      delete_row_statement <- paste("UPDATE ",
+                                    tbl_name,
+                                    " SET keep = 9",
+                                    " WHERE ",
+                                    link_var,
+                                    " = '",
+                                    rm_link,
+                                    "'",
+                                    sep = ""
+      )
     } else {
-      link_var <- "end_link"
-    }
 
-    delete_row_statement <- paste("DELETE FROM ",
+      link_var <- "end_link"
+      delete_row_statement <- paste("DELETE FROM ",
                                   rm_table,
                                   " WHERE ",
                                   link_var," = '",
@@ -74,6 +86,9 @@ remove_duds <- function(removes_df){
                                   "'",
                                   sep=""
     )
+
+
+    }
 
     print(delete_row_statement)
     dbSendQuery(sql_con, delete_row_statement)
@@ -237,9 +252,9 @@ shinyServer(function(input, output, session) {
 
 
               onStop(function(){
-                       if (nrow(removes) != 0){
-                         remove_duds(removes)
-                       }
+#                       if (nrow(removes) != 0){
+ #                        remove_duds(removes)
+  #                     }
 
                        if (exists("sql_con")){
                          dbDisconnect(sql_con)
