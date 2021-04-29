@@ -11,10 +11,19 @@ print(the_date)
 #########################
 
 
+# IF YOU ARE GETTING: "Error in has_one(keys) : key must be not be "" or NA"
+# YOU NEED TO SOURCE THE MASTER VARIABLES. IT IS MISSING ENV VARS
 
 ##### PULL IN DATA FROM POSTGRES #####
 
-creds <<- read_yaml(Sys.getenv('CREDS_PATH'))
+creds_path <<- Sys.getenv('CREDS_PATH')
+
+if (nchar(creds_path) <= 0) {
+  print("Master Variables not sourced, killing app...")
+  quit(save="no")
+}
+
+creds <<- read_yaml(creds_path)
 
 pull_data <- function(){
 
@@ -43,7 +52,6 @@ pull_data <- function(){
   tot <<- nrow(viewables)
 }
 
-#print("pre-pulldata")
 pull_data()
 
 auto_switch <<- FALSE
@@ -96,9 +104,6 @@ remove_duds <- function(removes_df){
   dbDisconnect(sql_con)
 }
 
-
-
-
 get_cnt_safe <- function(viewables,removes){
   internal_cnt <<- sample(x = 1:tot, size = 1, replace = TRUE)
   while (TRUE){
@@ -113,8 +118,6 @@ get_cnt_safe <- function(viewables,removes){
   }
   return(internal_cnt)
 }
-
-
 
 parse_csrf <- function(cookie_table){
   output <- cookie_table[which(cookie_table$name == "csrftoken"),7]
@@ -173,8 +176,6 @@ reauthenticate <- function(full_url){
 insta_fresh <- function(piece){
 
   full_url <- paste("https://www.instagram.com", piece, "?__a=1", sep = "")
-
-  ## If response is bad [define in a little bit], run set_insta_sesson and then retry••
 
   page_data <- content(GET(full_url))
 
@@ -237,11 +238,28 @@ shinyServer(function(input, output, session) {
                             HIDE_FLAG <<- FALSE
               }
 
+              ensure_image_load <- function(cnt){
+                tryCatch(
+                         {
+                           img_link <<- get_link(cnt)
+                           image_read(img_link) %>%
+                             image_write("tmp.jpg")
+                           return(TRUE)
+                         },
+                         error = function(err){
+                           print(paste("error while loading a new image:", err, sep = "\n"))
+                           return(FALSE)
+                         }
+                )
+              }
 
               buffer_new_image <- function(cnt){
-                img_link <<- get_link(cnt)
-                image_read(img_link) %>%
-                image_write("tmp.jpg")
+                im_buff_flag <- ensure_image_load(cnt)
+
+                while(im_buff_flag == FALSE) {
+                  cnt <<- get_cnt_safe(viewables,removes)
+                  im_buff_flag <<- ensure_image_load(cnt)
+                }
               }
 
               next_image <- function(){
@@ -252,9 +270,9 @@ shinyServer(function(input, output, session) {
 
 
               onStop(function(){
-#                       if (nrow(removes) != 0){
- #                        remove_duds(removes)
-  #                     }
+                       if (nrow(removes) != 0){
+                        remove_duds(removes)
+                     }
 
                        if (exists("sql_con")){
                          dbDisconnect(sql_con)
@@ -273,13 +291,6 @@ shinyServer(function(input, output, session) {
               })
 
               buffer_new_image(cnt)
-
-              output$image_div_object <- renderUI({
-                    imageOutput("image_output",
-                                height = "100%"#,
-                    )
-              })
-
 
               ########################
               # Initial HIDDEN Output #  
@@ -320,17 +331,6 @@ shinyServer(function(input, output, session) {
               observeEvent(input$hide, {
                              initial_view()
               })
-
-              ##### SHOW DISPLAY #####
-
-#              observeEvent(input$unhide_button, {
-#                             unhide()
-#              })
-
-
-
-
-
 
 
               ##### KILL BUTTON #####
