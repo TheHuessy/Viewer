@@ -119,131 +119,129 @@ get_link <- function(cnt){
   }
   return(output_link)
 }
-#load_image <- function(){
-#  output$image_output <<- renderImage({
-#    list(src = "tmp.jpg",
-#         contentType = "image/jpeg")},
-#                                      deleteFile = TRUE)
-  ## For whatever reason, if you don't have a print() command or something at the end
-  ## R shiny won't know what to do and throw a session$fileUrl error
-  ## That's why unhide wasn't working, it was getting to this function and failing
-#  print(img_link)
-#}
+ensure_image_load <- function(cnt){
+  tryCatch(
+           {
+             img_link <<- get_link(cnt)
+             img_obj <<- image_read(img_link)
+             image_write(img_obj,"tmpR.jpg")
+             image_write(img_obj,"tmpL.jpg")
+
+             return(TRUE)
+           },
+           error = function(err){
+             print(paste("error while loading a new image:", err, sep = "\n"))
+             return(FALSE)
+           }
+  )
+}
+
+buffer_new_image <- function(cnt){
+  im_buff_flag <- ensure_image_load(cnt)
+  ##############
+  print(im_buff_flag)
+  ##############
+
+  while(im_buff_flag == FALSE) {
+    cnt <<- get_cnt_safe(viewables,removes)
+    im_buff_flag <<- ensure_image_load(cnt)
+  }
+  raw_info <<- image_info(img_obj)
+}
+
+calc_conv <- function(max,raw){
+  return(max/raw)
+}
+
+get_output_dims <- function(screen_width, screen_height, raw_width, raw_height){
+  if (raw_width > raw_height){
+    conv <- calc_conv(((screen_width/2)-20), raw_width)
+  } else {
+    conv <- calc_conv((screen_height-40), raw_height)
+  }
+
+  return(list(width=(raw_width*conv), height=(raw_height*conv)))
+}
 
 pull_data()
 HIDE_FLAG <<- TRUE
 cnt <<- get_cnt_safe(viewables,removes)
+buffer_new_image(cnt)
 
-# options(shiny.port = 3839)
-# 
-# options(shiny.host = "192.168.0.103")
-
-# Define server logic required to draw a histogram
 shinyServer(function(input, output, session) {
                   wh <<- reactive({input$dimension[2]})
                   ww <<- reactive({input$dimension[1]})
 
-                  output$LView <- renderUI({
-                    fixedPanel({
-                      renderImage({
-                        list(src = "tmp.jpg",
-                             width = ((ww()/2)-40),
-                             height = (wh()-100),
-                             contentType = "image/jpeg"
-                        )
-                    })},
-                               left = 25,
-                               top = 50,
-                               bottom = 0
-                    )
-#                    imageOutput("LView",
-#                                height = "100%",
-#                                width = "50%"
-#                    )
-                  })
-
-                  output$RView <- renderUI({
-                    fixedPanel({
-                      renderImage({
-                        list(src = "tmp.jpg",
-                             width = ((ww()/2)-40),
-                             height = (wh()-100),
-                             contentType = "image/jpeg"
-                        )
-                    })},
-                               left = 25,
-                               top = 50,
-                               bottom = 0
-                    )
-#                    imageOutput("RView",
-#                                height = "100%",
-#                                width = "50%"
-#                                )
-
-                  })
-
-#              get_screen_dims <- function(){
-#                  wh <<- reactive({input$dimension[2]})
-#                  ww <<- reactive({input$dimension[1]})
-#                  wh <<- isolate(input$dimension[2])
-#                  ww <<- isolate(input$dimension[1])
-#              }
-#              get_screen_dims()
-#              print(wh())
-#              print(ww())
-
-#              general_image_output <- function(){
-#                 return(renderImage({
-#                   list(src = "tmp.jpg",
-#                        width = ((ww()/2)-40),
-#                        height = (wh()-100),
-#                        contentType = "image/jpeg")
-#                 }, deleteFile = TRUE))
-#              }
-
 
               load_views <- function(){
-                  output$LView <- renderUI({
+                ## Execute math on how big the images should be here
+                ##      You can still define most of the functions above
+                ##      You want to be able to get what the dims are 
+                ##      for each image
+                ##      raw_width > max_display_width > output_width
+                ##
+                ##      Conversion factor should be fine, then apply it to
+                ##      the image raw width/height
+                ##
+                ##      Cov = max/raw
+                ##      output = raw * conv
+                ##
+                ##      What if an image is extra wide/extra tall?
+                ##      Need to have constraints for each dim to decide
+                ##      which dim we are keying the conversion to.
+                ##      Example, if it's extra tall, we actually want to key
+                ##      the conversion to the height, not width.
+                ##      Or just which ever dim is the largest?
+                ##          Seems simple enough
+                ##
+                ##      Function sketch:
+                ##      output: list of width and height values
+                ##      inputs: Screen max height, screen max width, raw image width, raw image height
+#                get_output_dims(ww(), wh(), raw_info$width, raw_info$height)
+
+                  output$LView <<- renderUI({
+                    output_dims <- get_output_dims(ww(), wh(), raw_info$width, raw_info$height)
                     fixedPanel({
                       actionButton("nextL", label = "")
                       tags$button(
                                   id = "nextL",
                                   class = "btn action-button",
-                                  tags$img(src = "",
-                                           width = ((ww()/2)-40), height = (wh()-100))
+                                  tags$img(src = "tmpL.jpg",
+                                           width = ((ww()/2)-20), height = (wh()-40))
                       )
                       tags$style(HTML("
                                       .btn {
                                         display:block;
                                         height: 100%;
                                         width: 100%;
+                                        max-height: 100%;
+                                        max-width: 100%;
                                       }
                                       "))
                       renderImage({
                         list(src = "tmpL.jpg",
-                             width = ((ww()/2)-40),
-                             height = (wh()-100),
+#                             width = ((ww()/2)-20),
+#                             height = (wh()-40),
+                             width = output_dims$width,
+                             height = output_dims$height,
                              contentType = "image/jpeg"
                         )
                     }, deleteFile = TRUE)},
-                               left = 25,
-                               top = 50,
+                               left = 15,
+                               top = 15,
                                bottom = 0
                     )
-#                    imageOutput("LView",
-#                                height = "100%",
-#                                width = "50%"
-#                    )
                   })
 
-                  output$RView <- renderUI({
+                  output$RView <<- renderUI({
+                    output_dims <- get_output_dims(ww(), wh(), raw_info$width, raw_info$height)
                     fixedPanel({
                       actionButton("nextR", label = "")
                       tags$button(
                                   id = "nextR",
                                   class = "btn action-button",
-                                  tags$img(src = "",
-                                           width = ((ww()/2)-40), height = (wh()-100))
+                                  tags$img(src = "tmpR.jpg",
+                                           width = ((ww()/2)-20), height = (wh()-40))
                       )
                       tags$style(HTML("
                                       .btn {
@@ -254,80 +252,21 @@ shinyServer(function(input, output, session) {
                                       "))
                       renderImage({
                         list(src = "tmpR.jpg",
-                             width = ((ww()/2)-40),
-                             height = (wh()-100),
+                             width = output_dims$width,
+                             height = output_dims$height,
+#                             width = ((ww()/2)-20),
+#                             height = (wh()-40),
                              contentType = "image/jpeg"
                         )
                     }, deleteFile = TRUE)},
-                               right = 25,
-                               top = 50,
+                               right = 15,
+                               top = 15,
                                bottom = 0
                     )
-#                    imageOutput("RView",
-#                                height = "100%",
-#                                width = "50%"
-#                                )
 
                   })
-##                output$RView <- general_image_output()
-#                output$LView <- general_image_output()
-#                output$RView <<- renderImage({
-#                    list(src = "tmp.jpg",
-#                         width = "50%",
-#                         height = (wh()-100),
-#                         contentType = "image/jpeg")
-#                  }, deleteFile = TRUE)
-#  
-#                  output$LView <<- renderImage({
-#                      list(src = "tmp.jpg",
-#                           width = "50%",
-#                           height = (wh()-100),
-#                           contentType = "image/jpeg")
-#                    }, deleteFile = TRUE)
-                    #               print(wh())
- #               print(ww())
-
-
-
-
-
-                #output$image_output <<- renderImage({
-                #  list(src = "tmp.jpg",
-                #       contentType = "image/jpeg")},
-                #                                    deleteFile = TRUE)
-                ## For whatever reason, if you don't have a print() command or something at the end
-                ## R shiny won't know what to do and throw a session$fileUrl error
-                ## That's why unhide wasn't working, it was getting to this function and failing
- #               print(paste("cnt is:", cnt))
-  #              print(paste("viewables for that cnt is:", viewables[cnt,1]))
-#                print(paste("img_link object:",img_link))
- #               print("==========")
               }
 
-              ensure_image_load <- function(cnt){
-                tryCatch(
-                         {
-                           img_link <<- get_link(cnt)
-                           img_obj <<- image_read(img_link)
-                           image_write(img_obj,"tmpR.jpg")
-                           image_write(img_obj,"tmpL.jpg")
-                           return(TRUE)
-                         },
-                         error = function(err){
-                           print(paste("error while loading a new image:", err, sep = "\n"))
-                           return(FALSE)
-                         }
-                )
-              }
-
-              buffer_new_image <- function(cnt){
-                im_buff_flag <- ensure_image_load(cnt)
-
-                while(im_buff_flag == FALSE) {
-                  cnt <<- get_cnt_safe(viewables,removes)
-                  im_buff_flag <<- ensure_image_load(cnt)
-                }
-              }
 
               next_image <- function(){
                 cnt <<- get_cnt_safe(viewables,removes)
@@ -345,8 +284,14 @@ shinyServer(function(input, output, session) {
                          dbDisconnect(sql_con)
                        }
 
-                       if (file.exists("tmp.jpg")){
-                         file.remove("tmp.jpg")
+                       if (file.exists("tmpR.jpg")){
+                         file.remove("tmpR.jpg")
+                         print("Removed right tmp file")
+                       }
+
+                       if (file.exists("tmpL.jpg")){
+                         file.remove("tmpL.jpg")
+                         print("Removed left tmp file")
                        }
 
                        print("Session disconnected")
@@ -357,12 +302,17 @@ shinyServer(function(input, output, session) {
                         print("blanket clicked")
                         next_image()
              })
+
+#              print("loading first image with next_image()")
+#              next_image()
+#              print("loaded!")
             print("Buffering image")
-            buffer_new_image()
+            buffer_new_image(cnt)
             print("Image buffered!")
 
             print("lading views")
             load_views()
+            next_image()
             print("views loaded")
 
 

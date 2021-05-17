@@ -13,9 +13,10 @@ library(shinythemes)
 library(magick)
 jsResetCode <- "shinyjs.reset = function() {history.go(0)}"
 # Define UI for application that draws a histogram
-shinyUI(fluidPage( useShinyjs(),
-                   
-#                   extendShinyjs(text = jsResetCode),
+shinyUI(
+        fixedPage(
+                  useShinyjs(),
+                  includeCSS("www/style.css"),
                    extendShinyjs(text = jsResetCode, functions = c("history")),
                    tags$head(
                      tags$style(HTML("body {
@@ -27,10 +28,6 @@ shinyUI(fluidPage( useShinyjs(),
         }"))
                    ),
 
-  # Application title
-  titlePanel(""),
-  
-  # Sidebar with a slider input for number of bins 
   sidebarLayout(
     sidebarPanel(id = "sidebar",
       style = "position:fixed;width:inherit;",
@@ -62,7 +59,6 @@ shinyUI(fluidPage( useShinyjs(),
     mainPanel(
       div(id="blanket",
       fixedRow(
-#      fluidRow(
       uiOutput("LView"),
       uiOutput("RView")#,
 #      column(
