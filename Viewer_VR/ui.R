@@ -12,7 +12,6 @@ library(shinyjs)
 library(shinythemes)
 library(magick)
 jsResetCode <- "shinyjs.reset = function() {history.go(0)}"
-# Define UI for application that draws a histogram
 shinyUI(
         fixedPage(
                   useShinyjs(),
@@ -51,30 +50,13 @@ shinyUI(
                       height: 100%;
                       width: 100%;
                       }
-                      
                       "))
     ),
-      
-    # /Show a plot of the generated distribution
     mainPanel(
       div(id="blanket",
       fixedRow(
       uiOutput("LView"),
       uiOutput("RView")#,
-#      column(
-#             width = 6,
-#             imageOutput("LView",
-#                         width = "50%",
-#                         height = "100%"
-#                         ),
-#             ),
-#      column(
-#             width = 6,
-#             imageOutput("RView",
-#                         width = "50%",
-#                         height = "100%"
-#             )
-#             )      #verbatimTextOutput("nsread")
       )
       )
       )
@@ -82,8 +64,3 @@ shinyUI(
   )
   )
 
-
-      
-      
-      
-      

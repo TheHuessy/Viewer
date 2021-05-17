@@ -25,15 +25,13 @@ pull_data <- function(){
                        host=creds$pg_host,
                        user=creds$pg_user,
                        password=creds$pg_pw,
-                       #dbname="strobot"
-                       dbname="decoy"
+                       dbname="strobot"
   )
 
-#  query = "SELECT DISTINCT end_link FROM culling_direct WHERE keep = 1
-#  UNION
-#  SELECT end_link, 'pulls' as table_name FROM pulls WHERE link_type = 'Direct'"
+  query = "SELECT DISTINCT end_link, 'culling_external' as table_name FROM culling_direct WHERE keep = 1
+  UNION
+  SELECT end_link, 'pulls' as table_name FROM pulls WHERE link_type = 'Direct'"
 
-  query = "SELECT DISTINCT end_link FROM dummy_ims"
 
 
   viewables <<- dbGetQuery(sql_con,
@@ -42,9 +40,6 @@ pull_data <- function(){
 
   tot <<- nrow(viewables)
 
-  ################
-  print(viewables)
-  ################
 }
 removes <<- data.frame(end_link=c(),table_name=c())
 
@@ -55,8 +50,7 @@ remove_duds <- function(removes_df){
                        host=creds$pg_host,
                        user=creds$pg_user,
                        password=creds$pg_pw,
-#                       dbname="strobot"
-                       dbname="decoy"
+                       dbname="strobot"
   )
 
   for (i in 1:nrow(removes_df)){
@@ -138,9 +132,6 @@ ensure_image_load <- function(cnt){
 
 buffer_new_image <- function(cnt){
   im_buff_flag <- ensure_image_load(cnt)
-  ##############
-  print(im_buff_flag)
-  ##############
 
   while(im_buff_flag == FALSE) {
     cnt <<- get_cnt_safe(viewables,removes)
@@ -154,10 +145,10 @@ calc_conv <- function(max,raw){
 }
 
 get_output_dims <- function(screen_width, screen_height, raw_width, raw_height){
-  if (raw_width > raw_height){
-    conv <- calc_conv(((screen_width/2)-20), raw_width)
+  if (raw_width >= raw_height){
+    conv <- calc_conv(((screen_width/2)-10), raw_width)
   } else {
-    conv <- calc_conv((screen_height-40), raw_height)
+    conv <- calc_conv((screen_height-20), raw_height)
   }
 
   return(list(width=(raw_width*conv), height=(raw_height*conv)))
@@ -174,93 +165,75 @@ shinyServer(function(input, output, session) {
 
 
               load_views <- function(){
-                ## Execute math on how big the images should be here
-                ##      You can still define most of the functions above
-                ##      You want to be able to get what the dims are 
-                ##      for each image
-                ##      raw_width > max_display_width > output_width
-                ##
-                ##      Conversion factor should be fine, then apply it to
-                ##      the image raw width/height
-                ##
-                ##      Cov = max/raw
-                ##      output = raw * conv
-                ##
-                ##      What if an image is extra wide/extra tall?
-                ##      Need to have constraints for each dim to decide
-                ##      which dim we are keying the conversion to.
-                ##      Example, if it's extra tall, we actually want to key
-                ##      the conversion to the height, not width.
-                ##      Or just which ever dim is the largest?
-                ##          Seems simple enough
-                ##
-                ##      Function sketch:
-                ##      output: list of width and height values
-                ##      inputs: Screen max height, screen max width, raw image width, raw image height
-#                get_output_dims(ww(), wh(), raw_info$width, raw_info$height)
 
                   output$LView <<- renderUI({
                     output_dims <- get_output_dims(ww(), wh(), raw_info$width, raw_info$height)
+                    side_margin = (((ww()/2)-output_dims$width)/2)
+                    top_margin = ((wh()-output_dims$height)/2)
+
                     fixedPanel({
                       actionButton("nextL", label = "")
                       tags$button(
                                   id = "nextL",
                                   class = "btn action-button",
-                                  tags$img(src = "tmpL.jpg",
-                                           width = ((ww()/2)-20), height = (wh()-40))
+                                  tags$img(src = "",
+                                           width = ((ww()/2)-10), height = (wh()-20))
                       )
                       tags$style(HTML("
                                       .btn {
                                         display:block;
+                                        margin-left: auto;
+                                        margin-right: auto;
                                         height: 100%;
                                         width: 100%;
-                                        max-height: 100%;
-                                        max-width: 100%;
                                       }
                                       "))
                       renderImage({
                         list(src = "tmpL.jpg",
-#                             width = ((ww()/2)-20),
-#                             height = (wh()-40),
                              width = output_dims$width,
                              height = output_dims$height,
                              contentType = "image/jpeg"
                         )
                     }, deleteFile = TRUE)},
-                               left = 15,
-                               top = 15,
+                               left = side_margin,
+                               top = top_margin,
                                bottom = 0
                     )
                   })
 
                   output$RView <<- renderUI({
                     output_dims <- get_output_dims(ww(), wh(), raw_info$width, raw_info$height)
+                    side_margin = (((ww()/2)-output_dims$width)/2)
+                    top_margin = ((wh()-output_dims$height)/2)
+
                     fixedPanel({
                       actionButton("nextR", label = "")
                       tags$button(
                                   id = "nextR",
                                   class = "btn action-button",
-                                  tags$img(src = "tmpR.jpg",
-                                           width = ((ww()/2)-20), height = (wh()-40))
+                                  tags$img(src = "",
+                                           width = ((ww()/2)-10), height = (wh()-20))
                       )
                       tags$style(HTML("
                                       .btn {
                                         display:block;
-                                        height: 100px;
-                                        width: 50px;
+                                        margin-left: auto;
+                                        margin-right: auto;
+                                        height: 100%;
+                                        width: 100%;
                                       }
                                       "))
                       renderImage({
                         list(src = "tmpR.jpg",
                              width = output_dims$width,
                              height = output_dims$height,
-#                             width = ((ww()/2)-20),
-#                             height = (wh()-40),
                              contentType = "image/jpeg"
                         )
                     }, deleteFile = TRUE)},
-                               right = 15,
-                               top = 15,
+                                      ## The next two lines force the images to be equidistant from the top and the respective side the image is on
+                                      ## Effectively ensures that things are centered
+                               right = side_margin,
+                               top = top_margin,
                                bottom = 0
                     )
 
@@ -298,189 +271,17 @@ shinyServer(function(input, output, session) {
                        print("=====================")
                 })
 
-              onclick("blanket",{ ## If this doesn't work, try to convert the ui to a single UIOutput and observe that
-                        print("blanket clicked")
+              onclick("blanket",{
                         next_image()
              })
 
-#              print("loading first image with next_image()")
-#              next_image()
-#              print("loaded!")
-            print("Buffering image")
             buffer_new_image(cnt)
-            print("Image buffered!")
 
-            print("lading views")
             load_views()
-            next_image()
-            print("views loaded")
-
-
-  #Import Links
-
-  ######### POSTGRES POINTER ###########
-#  saves <- read.csv("C:/Users/James/Documents/R Projects/ImageRecognition/Image Links/SaveRuns.csv", stringsAsFactors = FALSE)
-
-
-  ## BRING IN IMAGES
-  ## CREATE IMAGE OBJECT
-  ## WRITE IMAGE TO TEMP FILE
-  ## LOAD BOTH VIEWS WITH SAME IMAGE
-  ##    don't need to load the image in each observe, just use univseral obj
-  ##
-  ##WHAT IS THE DEAL WITH OBSERVING BOTH L AND R BUTTONS?
-  ##    Is it that that's the only way to ensure a touch is registered?
-  ##    I think that's just an old method. Might be able to do an onClick() and point
-  ##    it to the blanket object
-
-
-    ## TODO:
-              ## Function to generate both views based on the global image var
-              ## Function to either pull in and/or update existing dimensions
-              ##    This needs to be looked into
-
-  #saves$FIT <- NA
-  #write.csv(saves, "C:/Users/James/Documents/R Projects/ImageRecognition/Image Links/SaveRuns.csv", row.names = FALSE)
-  ## Generate a specific random order:
-  # set.seed([Put a number here])
-  # corp <- sample(as.character(saves$URLs))
-  ##
-  #Generate Random order
- # corp <- sample(as.character(saves$URLS))
-  ##
-  ## Starting a counter
-#  ns <- 1
-
-  ## Loading images
-#  im <- image_read(as.character(corp[ns]))
-  #get original size info
-#  info <- image_info(im)
-  #get the width
-#  tw <- info$width
-  #get the height
-#  th <- info$height
-#  wh <- reactive({input$dimension[2]})
-#  ww <- reactive({input$dimension[1]})
-
-#  output$RView <- renderUI({
-#    fixedPanel({
-#      te <- im %>%
-#        image_write(tempfile(fileext = 'jpg'), format = 'jpg')
-#      actionButton("nextR", label = "THIS IS THE RIGHT ACTION BUTTON")
-#      tags$button(
-#        id = "nextR",
-#        class = "btn action-button",
-#        tags$img(src = "",
-#                 width = ((ww()/2)-40), height = (wh()-100))
-#      )
-#      tags$style(HTML("
-#                      .btn {
-#                      display:block;
-#                      height: 100px;
-#                      width: 50px;
-#                      }
-#                      
-#                      "))
-#           renderImage({
-#             
-#             list(src = te, width = ((ww()/2)-40), height = (wh()-100), contentType = "image/jpeg")
-#         })},
-#         right = 25,
-#         top = 50,
-#         bottom = 0
-#           )
-#
-#})
-#  output$LView <- renderUI({
-#    fixedPanel({
-#      te <- im %>%
-#        image_write(tempfile(fileext = 'jpg'), format = 'jpg')
-#      actionButton("nextL", label = "")
-#      tags$button(
-#        id = "nextL",
-#        class = "btn action-button",
-#        tags$img(src = "",
-#                 width = ((ww()/2)-40), height = (wh()-100))
-#      )
-#      tags$style(HTML("
-#                      .btn {
-#                      display:block;
-#                      height: 100%;
-#                      width: 100%;
-#                      }
-#                      
-#                      "))
-#      renderImage({
-#        
-#        list(src = te, width = ((ww()/2)-40), height = (wh()-100), contentType = "image/jpeg")
-#      })},
-#      left = 25,
-#         top = 50,
-#         bottom = 0
-#           )
-#    
-#  })
-
-
-  #output$nsread <- renderText(ns)
-  
-#  observeEvent(input$nextL, {
-#    ns <<- ns+1
-#    im <<- image_read(as.character(corp[ns]))
-#    output$LView <<- renderUI({
-#      fixedPanel({
-#        te <- im %>%
-#          image_write(tempfile(fileext = 'jpg'), format = 'jpg')
-#        actionButton("nextL", label = "")
-#        tags$button(
-#          id = "nextL",
-#          class = "btn action-button",
-#          tags$img(src = "",
-#                   width = ((ww()/2)-40), height = (wh()-100))
-#        )
-#        renderImage({
-#          
-#          list(src = te, width = ((ww()/2)-40), height = (wh()-100), contentType = "image/jpeg")
-#        })},
-#        left = 25,
-#        top = 50,
-#        bottom = 0
-#      )
-#      
-#    })
-#  })
-#  
-#  observeEvent(input$nextR, {
-#    ns <<- ns+1
-#    im <<- image_read(as.character(corp[ns]))
-#    
-#    output$RView <<- renderUI({
-#      fixedPanel({
-#        te <- im %>%
-#          image_write(tempfile(fileext = 'jpg'), format = 'jpg')
-#        actionButton("nextR", label = "")
-#        tags$button(
-#          id = "nextR",
-#          class = "btn action-button",
-#          tags$img(src = "",
-#                   width = ((ww()/2)-40), height = (wh()-100))
-#        )
-#        renderImage({
-#          
-#          list(src = te, width = ((ww()/2)-40), height = (wh()-100), contentType = "image/jpeg")
-#        })},
-#        left = 25,
-#        top = 50,
-#        bottom = 0
-#      )
-#      
-#    })
-#  })
-#  
 
               ##############################  TIMER  ###############################
 
-#              autoad <- reactiveTimer(intervalMs =  as.numeric(Sys.getenv('VIEWER_INTERVAL')))
+              autoad <- reactiveTimer(intervalMs =  as.numeric(Sys.getenv('VIEWER_INTERVAL')))
 
               ######################################################################
 
@@ -491,72 +292,4 @@ shinyServer(function(input, output, session) {
 #                }
 #              })
 
-
-
-  ##############################  TIMER  ###############################
-   
-#  autoad <- reactiveTimer(intervalMs =  5000)
-  
-  ######################################################################
-#   observe({autoad()
-#     ns<<- ns+1
-#     im <<- image_read(as.character(corp[ns]))
-#     output$LView <- renderUI({
-#       fixedPanel({
-#         te <- im %>%
-#           image_write(tempfile(fileext = 'jpg'), format = 'jpg')
-#         actionButton("nextL", label = "")
-#         tags$button(
-#           id = "nextL",
-#           class = "btn action-button",
-#           tags$img(src = "",
-#                    width = ((ww()/2)-40), height = (wh()-100))
-#         )
-#         tags$style(HTML("
-#                      .btn {
-#                      display:block;
-#                      height: 100%;
-#                      width: 100%;
-#                      }
-#                      
-#                      "))
-#         renderImage({
-#           
-#           list(src = te, width = ((ww()/2)-40), height = (wh()-100), contentType = "image/jpeg")
-#         })},
-#         left = 25,
-#         top = 50,
-#         bottom = 0
-#       )})
-#       output$RView <- renderUI({
- ##        fixedPanel({
-#           te <- im %>%
-#             image_write(tempfile(fileext = 'jpg'), format = 'jpg')
-#           actionButton("nextR", label = "")
-#           tags$button(
-#             id = "nextR",
-#             class = "btn action-button",
-#             tags$img(src = "",
-#                      width = ((ww()/2)-40), height = (wh()-100))
-#           )
-#           tags$style(HTML("
-#                      .btn {
-#                      display:block;
-#                      height: 100%;
-#                      width: 100%;
-#                      }
-#                      
-#                      "))
-#           renderImage({
-#             
-#             list(src = te, width = ((ww()/2)-40), height = (wh()-100), contentType = "image/jpeg")
-#           })},
-#           right = 25,
-#           top = 50,
-#           bottom = 0
-#         )
-#       
-#     })
-#     })   
- 
 })
